@@ -1,70 +1,61 @@
 // @ts-expect-error - PlayCanvas ESM scripts don't have type declarations
 import { CameraControls } from "playcanvas/scripts/esm/camera-controls.mjs";
-// @ts-expect-error - PlayCanvas ESM scripts don't have type declarations
-import { Grid } from "playcanvas/scripts/esm/grid.mjs";
-import { useEffect, useState } from "react";
 import { Entity } from "@playcanvas/react";
-import { useEnvAtlas, useMaterial } from "@playcanvas/react/hooks";
-import { Camera, Environment, Render, Script } from "@playcanvas/react/components";
+import { useEnvAtlas, useSplat, useMaterial } from "@playcanvas/react/hooks";
+import { Camera, Environment, Script, GSplat, Render, Light } from "@playcanvas/react/components";
 
-/**
- * The Scene renders a sphere with a grid and camera controls
- */
-function Scene({ onClick }: SceneProps) {
+function Statue() {
+  const { asset: statue } = useSplat('/Cthulhu Statue.sog');
+  if (!statue) return null;
 
-  // Track the hover state and set the color based on the hover state
-  const [hovering, setHovering] = useState(false);
+  return (
+    <Entity name='statue' rotation={[180, -90, 0]} position={[0, -0.75, 0]} scale={[2, 2, 2]}>
+      <GSplat asset={statue} castShadows={true} />
+    </Entity>
+  );
+}
 
-  // Set a material color based on the hover state
-  const diffuse = hovering ? 'orange' : 'lightgrey';
-
-  // Create a material for the sphere
-  const material = useMaterial({ diffuse });
+function Scene() {
 
   // Load the environment map
   const { asset: envMap } = useEnvAtlas('/environment-map.png');
+  const sphereMat = useMaterial({ diffuse: '#c0a0a0' });
+  const groundMat = useMaterial({ diffuse: '#666666' })
 
-  // change the mouse cursor based on the hover state
-  useEffect(() => {
-    document.body.style.cursor = hovering ? 'pointer' : 'default';
-  }, [hovering]);
-
-  // Don't render until the environment map is loaded
   if (!envMap) return null;
 
   return (
     <>
-      {/* Render some environment lighting using the environment map */}
-      <Environment envAtlas={envMap} showSkybox={false} />
+      <Environment envAtlas={envMap} showSkybox={false} skyboxIntensity={0.25} />
 
-      {/* Render a background grid */}
-      <Entity scale={[1000, 1000, 1000]}>
-        <Script script={Grid} />
+      <Entity name='directional-light' position={[10, 10, 10]} rotation={[30, -30, 30]}>
+        <Light
+          type={'directional'}
+          castShadows={true}
+          shadowDistance={30}
+          shadowBias={0.2}
+          normalOffsetBias={0.05}
+          shadowResolution={1024}
+        />
       </Entity>
 
-      {/* Create a camera entity with camera controls */}
-      <Entity name='camera' position={[4, 1, 4]}>
-          <Camera clearColor='#171717' />
-          <Script script={CameraControls} />
+      <Entity name='camera' position={[0, 1, 4]}>
+        <Camera clearColor='#171717' />
+        <Script script={CameraControls} />
       </Entity>
 
-      {/* Create and position entity with pointer events */}
-      <Entity 
-        position={[0, 0.5, 0]}
-        onClick={onClick}
-        onPointerOver={() => setHovering(true)}
-        onPointerOut={() => setHovering(false)}
-        >
-        
-        {/* Render a sphere with the material */}
-        <Render type="sphere" material={material} />
+      <Entity name='sphere' position={[2, -0.25, 0]}>
+        <Render type="sphere" material={sphereMat} castShadows={true} />
       </Entity>
+
+      <Entity name='ground' scale={[1000, 1000, 1000]} position={[0, -0.75, 0]}>
+        <Render type="plane" material={groundMat} castShadows={false} receiveShadows={true} />
+      </Entity>
+
+      <Statue />
+
     </>
   )
-}
-
-type SceneProps = {
-  onClick: () => void;
 }
 
 export default Scene;
